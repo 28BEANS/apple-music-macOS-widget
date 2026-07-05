@@ -72,4 +72,13 @@ class MusicService {
       debugPrint("Error triggerUpdate: $e");
     }
   }
+
+  Future<String?> getArtworkPath() async {
+    try {
+      return await _channel.invokeMethod<String>('getArtworkPath');
+    } on PlatformException catch (e) {
+      debugPrint("Error getArtworkPath: $e");
+      return null;
+    }
+  }
 }
