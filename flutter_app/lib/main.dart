@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 import 'x_models/track_model.dart';
@@ -11,7 +13,7 @@ void main(List<String> args) async {
 
   // Route to secondary window if started with 'multi_window' argument
   if (args.firstOrNull == 'multi_window') {
-    final windowId = int.parse(args[1]);
+    final windowId = args[1];
     final Map<String, dynamic> arguments = args[2].isNotEmpty ? json.decode(args[2]) : {};
     runApp(SecondaryWindowApp(windowId: windowId, arguments: arguments));
     return;
@@ -29,6 +31,7 @@ void main(List<String> args) async {
   );
   
   windowManager.waitUntilReadyToShow(windowOptions, () async {
+    await windowManager.setResizable(false);
     await windowManager.show();
     await windowManager.focus();
   });
@@ -49,7 +52,7 @@ class MainApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF121214),
+        scaffoldBackgroundColor: const Color(0xFF0D0D11),
         colorScheme: const ColorScheme.dark(
           primary: Color(0xFFFC3C44), // Apple Music pink/red
           secondary: Color(0xFF303036),
@@ -83,97 +86,131 @@ class _DashboardShellState extends State<DashboardShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Row(
-        children: [
-          // Sidebar Menu
-          Container(
-            width: 220,
-            color: const Color(0xFF18181C),
-            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header Logo
-                Row(
-                  children: [
-                    const Icon(Icons.music_video_rounded, color: Color(0xFFFC3C44), size: 28),
-                    const SizedBox(width: 8),
-                    Text(
-                      'MusicWidget+',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white.withValues(alpha: 0.9),
-                        letterSpacing: 0.5,
+      body: GlassmorphicBackground(
+        child: Row(
+          children: [
+            // Sidebar Menu (Frosted glass look)
+            ClipRect(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                child: Container(
+                  width: 240,
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.25),
+                    border: Border(
+                      right: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.05),
+                        width: 1.5,
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(width: double.infinity, height: 40),
-                
-                // Sidebar items
-                _buildSidebarButton(0, Icons.dashboard_rounded, 'Player Controller'),
-                _buildSidebarButton(1, Icons.tune_rounded, 'Widget Configurator'),
-                _buildSidebarButton(2, Icons.analytics_outlined, 'Listening Insights'),
-                _buildSidebarButton(3, Icons.settings_rounded, 'Settings'),
-                const Spacer(),
-
-                // Multi-window floating lyrics toggle
-                InkWell(
-                  onTap: () async {
-                    if (_isLyricsWindowOpen) {
-                      await WindowService.instance.closeLyricsWindow();
-                      setState(() => _isLyricsWindowOpen = false);
-                    } else {
-                      await WindowService.instance.openLyricsWindow();
-                      setState(() => _isLyricsWindowOpen = true);
-                    }
-                  },
-                  borderRadius: BorderRadius.circular(10),
-                  child: Ink(
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-                    decoration: BoxDecoration(
-                      color: _isLyricsWindowOpen 
-                          ? const Color(0xFFFC3C44).withValues(alpha: 0.15)
-                          : const Color(0xFF26262B),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: _isLyricsWindowOpen ? const Color(0xFFFC3C44) : Colors.transparent,
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          _isLyricsWindowOpen ? Icons.layers_clear_rounded : Icons.picture_in_picture_alt_rounded,
-                          color: _isLyricsWindowOpen ? const Color(0xFFFC3C44) : Colors.white.withValues(alpha: 0.7),
-                          size: 18,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          _isLyricsWindowOpen ? 'Close Floating' : 'Lyrics Floating Window',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: _isLyricsWindowOpen ? const Color(0xFFFC3C44) : Colors.white.withValues(alpha: 0.9),
-                          ),
-                        ),
-                      ],
                     ),
                   ),
+                  padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 18),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Header Logo
+                      Row(
+                        children: [
+                          const Icon(CupertinoIcons.music_note_2, color: Color(0xFFFC3C44), size: 24),
+                          const SizedBox(width: 10),
+                          const Text(
+                            'MusicWidget+',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                              letterSpacing: -0.3,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(width: double.infinity, height: 44),
+                      
+                      // Sidebar items (Apple-style)
+                      _buildSidebarButton(0, CupertinoIcons.music_house_fill, 'Player Controller'),
+                      _buildSidebarButton(1, CupertinoIcons.slider_horizontal_3, 'Widget Configurator'),
+                      _buildSidebarButton(2, CupertinoIcons.graph_square, 'Listening Insights'),
+                      _buildSidebarButton(3, CupertinoIcons.settings, 'Settings'),
+                      const Spacer(),
+
+                      // Multi-window floating lyrics toggle
+                      InkWell(
+                        onTap: () async {
+                          if (_isLyricsWindowOpen) {
+                            await WindowService.instance.closeLyricsWindow();
+                            setState(() => _isLyricsWindowOpen = false);
+                          } else {
+                            await WindowService.instance.openLyricsWindow();
+                            setState(() => _isLyricsWindowOpen = true);
+                          }
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                          decoration: BoxDecoration(
+                            gradient: _isLyricsWindowOpen 
+                                ? const LinearGradient(
+                                    colors: [
+                                      Color(0xFFFC3C44),
+                                      Color(0xFFE22D35),
+                                    ],
+                                  )
+                                : null,
+                            color: _isLyricsWindowOpen ? null : Colors.white.withValues(alpha: 0.05),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: _isLyricsWindowOpen 
+                                  ? const Color(0xFFFC3C44).withValues(alpha: 0.5) 
+                                  : Colors.white.withValues(alpha: 0.08),
+                              width: 1,
+                            ),
+                            boxShadow: _isLyricsWindowOpen 
+                                ? [
+                                    BoxShadow(
+                                      color: const Color(0xFFFC3C44).withValues(alpha: 0.35),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 4),
+                                    )
+                                  ]
+                                : [],
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                CupertinoIcons.macwindow,
+                                color: Colors.white,
+                                size: 16,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                _isLyricsWindowOpen ? 'Close Lyrics Window' : 'Floating Lyrics Window',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ],
+              ),
             ),
-          ),
-          
-          // Main Body
-          Expanded(
-            child: _activeNavIndex == 0
-                ? const PlayerDashboard()
-                : PlaceholderView(title: ['Widget Settings', 'Listening Statistics', 'Settings'][_activeNavIndex - 1]),
-          ),
-        ],
+            
+            // Main Body
+            Expanded(
+              child: _activeNavIndex == 0
+                  ? const PlayerDashboard()
+                  : PlaceholderView(title: ['Widget Settings', 'Listening Statistics', 'Settings'][_activeNavIndex - 1]),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -181,26 +218,41 @@ class _DashboardShellState extends State<DashboardShell> {
   Widget _buildSidebarButton(int index, IconData icon, String title) {
     final bool isActive = _activeNavIndex == index;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
+      padding: const EdgeInsets.only(bottom: 6.0),
       child: InkWell(
         onTap: () => setState(() => _activeNavIndex = index),
-        borderRadius: BorderRadius.circular(8),
-        child: Ink(
-          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+        borderRadius: BorderRadius.circular(10),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
           decoration: BoxDecoration(
-            color: isActive ? const Color(0xFFFC3C44).withValues(alpha: 0.1) : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
+            color: isActive 
+                ? const Color(0xFFFC3C44).withValues(alpha: 0.15) 
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: isActive 
+                  ? const Color(0xFFFC3C44).withValues(alpha: 0.2) 
+                  : Colors.transparent,
+              width: 1,
+            ),
           ),
           child: Row(
             children: [
-              Icon(icon, color: isActive ? const Color(0xFFFC3C44) : Colors.white.withValues(alpha: 0.55), size: 20),
+              Icon(
+                icon, 
+                color: isActive ? const Color(0xFFFC3C44) : Colors.white.withValues(alpha: 0.55), 
+                size: 18
+              ),
               const SizedBox(width: 12),
               Text(
                 title,
                 style: TextStyle(
                   color: isActive ? Colors.white : Colors.white.withValues(alpha: 0.7),
-                  fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                  fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
                   fontSize: 13,
+                  letterSpacing: 0.2,
                 ),
               ),
             ],
@@ -211,6 +263,126 @@ class _DashboardShellState extends State<DashboardShell> {
   }
 }
 
+// -----------------------------------------------------------------------------
+// GLASSMORPHIC / AMBIENT GLOW SYSTEM
+// -----------------------------------------------------------------------------
+class GlassmorphicBackground extends StatelessWidget {
+  final Widget child;
+  const GlassmorphicBackground({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        // Ambient Blob 1 (Red/Pink)
+        Positioned(
+          top: -120,
+          right: -100,
+          child: Container(
+            width: 480,
+            height: 480,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  const Color(0xFFFC3C44).withValues(alpha: 0.16),
+                  const Color(0xFFFC3C44).withValues(alpha: 0.0),
+                ],
+              ),
+            ),
+          ),
+        ),
+        // Ambient Blob 2 (Blue/Purple)
+        Positioned(
+          bottom: -150,
+          left: -50,
+          child: Container(
+            width: 500,
+            height: 500,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  const Color(0xFF5E5CE6).withValues(alpha: 0.12),
+                  const Color(0xFF5E5CE6).withValues(alpha: 0.0),
+                ],
+              ),
+            ),
+          ),
+        ),
+        // Ambient Blob 3 (Pink/Purple)
+        Positioned(
+          top: 200,
+          left: 180,
+          child: Container(
+            width: 320,
+            height: 320,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  const Color(0xFFBF5AF2).withValues(alpha: 0.05),
+                  const Color(0xFFBF5AF2).withValues(alpha: 0.0),
+                ],
+              ),
+            ),
+          ),
+        ),
+        // Content
+        Positioned.fill(child: child),
+      ],
+    );
+  }
+}
+
+class GlassCard extends StatelessWidget {
+  final Widget child;
+  final double borderRadius;
+  final BoxConstraints? constraints;
+  final EdgeInsetsGeometry? padding;
+
+  const GlassCard({
+    super.key,
+    required this.child,
+    this.borderRadius = 24.0,
+    this.constraints,
+    this.padding,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(borderRadius),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+        child: Container(
+          constraints: constraints,
+          padding: padding,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.03),
+            borderRadius: BorderRadius.circular(borderRadius),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.08),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.4),
+                blurRadius: 35,
+                offset: const Offset(0, 15),
+              ),
+            ],
+          ),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+// -----------------------------------------------------------------------------
+// PLAYER DASHBOARD
+// -----------------------------------------------------------------------------
 class PlayerDashboard extends StatelessWidget {
   const PlayerDashboard({super.key});
 
@@ -225,58 +397,67 @@ class PlayerDashboard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(32),
+      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Dashboard header
-          Text(
+          const SizedBox(height: 8),
+          const Text(
             'Aesthetic Companion Controller',
             style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: Colors.white.withValues(alpha: 0.9),
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+              color: Colors.white,
+              letterSpacing: -0.5,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           Text(
             'Asynchronous bridge telemetry connected directly to macOS Music.app',
-            style: TextStyle(fontSize: 13, color: Colors.white.withValues(alpha: 0.4)),
+            style: TextStyle(
+              fontSize: 12, 
+              fontWeight: FontWeight.w400,
+              color: Colors.white.withValues(alpha: 0.45)
+            ),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 48),
 
-          // Player Card Enclosure (Glassmorphism layout)
+          // Player Card Enclosure (Liquid Glass)
           Expanded(
             child: Center(
               child: ValueListenableBuilder<TrackModel>(
                 valueListenable: MusicService.instance.currentTrack,
                 builder: (context, track, _) {
-                  return Container(
+                  return GlassCard(
                     constraints: const BoxConstraints(
-                      maxWidth: 550,
+                      maxWidth: 580,
                       maxHeight: 280,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1E1E22),
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.3),
-                          blurRadius: 20,
-                          offset: const Offset(0, 10),
-                        ),
-                      ],
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
                     ),
                     padding: const EdgeInsets.all(24),
                     child: Row(
                       children: [
-                        // Artwork Container
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: SizedBox(
-                            width: 180,
-                            height: 180,
+                        // Artwork Container with Apple Ambient Glow
+                        Container(
+                          width: 180,
+                          height: 180,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFFFC3C44).withValues(alpha: 0.15),
+                                blurRadius: 25,
+                                spreadRadius: 2,
+                              ),
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.4),
+                                blurRadius: 15,
+                                offset: const Offset(0, 8),
+                              ),
+                            ],
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
                             child: FutureBuilder<String?>(
                               future: MusicService.instance.getArtworkPath(),
                               builder: (context, snapshot) {
@@ -292,14 +473,18 @@ class PlayerDashboard extends StatelessWidget {
                                   }
                                 }
                                 return Container(
-                                  color: const Color(0xFF26262B),
-                                  child: const Icon(Icons.music_note_rounded, size: 54, color: Colors.white30),
+                                  color: const Color(0x10FFFFFF),
+                                  child: const Icon(
+                                    CupertinoIcons.music_note, 
+                                    size: 54, 
+                                    color: Colors.white30
+                                  ),
                                 );
                               },
                             ),
                           ),
                         ),
-                        const SizedBox(width: 24),
+                        const SizedBox(width: 28),
 
                         // Track Details and Controls
                         Expanded(
@@ -314,41 +499,50 @@ class PlayerDashboard extends StatelessWidget {
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.white,
+                                  letterSpacing: -0.3,
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
-                              const SizedBox(height: 6),
+                              const SizedBox(height: 4),
                               
                               // Artist / Album
                               Text(
                                 track.artist.isNotEmpty 
                                     ? '${track.artist} — ${track.album}' 
-                                    : 'Open Apple Music and select a song',
+                                    : 'Select a track in Apple Music',
                                 style: TextStyle(
-                                  fontSize: 13,
-                                  color: Colors.white.withValues(alpha: 0.6),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w400,
+                                  color: Colors.white.withValues(alpha: 0.55),
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
-                              const SizedBox(height: 20),
+                              const SizedBox(height: 24),
 
-                              // Playback Duration Slider
+                              // Playback Duration Slider (Cupertino slider style)
                               Row(
                                 children: [
                                   Text(
                                     _formatDuration(track.position),
-                                    style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.5)),
+                                    style: TextStyle(
+                                      fontSize: 10, 
+                                      fontFamily: 'monospace',
+                                      color: Colors.white.withValues(alpha: 0.4)
+                                    ),
                                   ),
                                   Expanded(
                                     child: SliderTheme(
                                       data: SliderTheme.of(context).copyWith(
                                         trackHeight: 3,
                                         activeTrackColor: const Color(0xFFFC3C44),
-                                        inactiveTrackColor: Colors.white10,
-                                        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-                                        overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+                                        inactiveTrackColor: Colors.white.withValues(alpha: 0.08),
+                                        thumbColor: Colors.white,
+                                        thumbShape: const RoundSliderThumbShape(
+                                          enabledThumbRadius: 5,
+                                        ),
+                                        overlayShape: const RoundSliderOverlayShape(overlayRadius: 10),
                                       ),
                                       child: Slider(
                                         min: 0.0,
@@ -363,36 +557,63 @@ class PlayerDashboard extends StatelessWidget {
                                   ),
                                   Text(
                                     _formatDuration(track.duration),
-                                    style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.5)),
+                                    style: TextStyle(
+                                      fontSize: 10, 
+                                      fontFamily: 'monospace',
+                                      color: Colors.white.withValues(alpha: 0.4)
+                                    ),
                                   ),
                                 ],
                               ),
                               const SizedBox(height: 12),
 
-                              // Control Buttons
+                              // Control Buttons (Cupertino Symbols)
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   IconButton(
-                                    icon: const Icon(Icons.skip_previous_rounded, size: 28),
+                                    icon: Icon(
+                                      CupertinoIcons.backward_fill, 
+                                      size: 20, 
+                                      color: Colors.white.withValues(alpha: 0.8)
+                                    ),
                                     onPressed: () => MusicService.instance.previous(),
                                   ),
-                                  const SizedBox(width: 12),
-                                  CircleAvatar(
-                                    radius: 28,
-                                    backgroundColor: const Color(0xFFFC3C44),
-                                    child: IconButton(
-                                      icon: Icon(
-                                        track.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                                        color: Colors.white,
-                                        size: 28,
+                                  const SizedBox(width: 14),
+                                  
+                                  // Play/Pause button
+                                  InkWell(
+                                    onTap: () => MusicService.instance.playPause(),
+                                    borderRadius: BorderRadius.circular(100),
+                                    child: Container(
+                                      width: 46,
+                                      height: 46,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: const Color(0xFFFC3C44),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: const Color(0xFFFC3C44).withValues(alpha: 0.35),
+                                            blurRadius: 12,
+                                            offset: const Offset(0, 4),
+                                          ),
+                                        ],
                                       ),
-                                      onPressed: () => MusicService.instance.playPause(),
+                                      child: Icon(
+                                        track.isPlaying ? CupertinoIcons.pause_fill : CupertinoIcons.play_fill,
+                                        color: Colors.white,
+                                        size: 20,
+                                      ),
                                     ),
                                   ),
-                                  const SizedBox(width: 12),
+                                  
+                                  const SizedBox(width: 14),
                                   IconButton(
-                                    icon: const Icon(Icons.skip_next_rounded, size: 28),
+                                    icon: Icon(
+                                      CupertinoIcons.forward_fill, 
+                                      size: 20, 
+                                      color: Colors.white.withValues(alpha: 0.8)
+                                    ),
                                     onPressed: () => MusicService.instance.next(),
                                   ),
                                 ],
@@ -402,14 +623,15 @@ class PlayerDashboard extends StatelessWidget {
                               // Volume Control
                               Row(
                                 children: [
-                                  Icon(Icons.volume_down_rounded, size: 16, color: Colors.white.withValues(alpha: 0.5)),
+                                  Icon(CupertinoIcons.volume_down, size: 14, color: Colors.white.withValues(alpha: 0.4)),
                                   Expanded(
                                     child: SliderTheme(
                                       data: SliderTheme.of(context).copyWith(
                                         trackHeight: 2,
-                                        activeTrackColor: Colors.white70,
-                                        inactiveTrackColor: Colors.white10,
-                                        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 4),
+                                        activeTrackColor: Colors.white.withValues(alpha: 0.6),
+                                        inactiveTrackColor: Colors.white.withValues(alpha: 0.08),
+                                        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 3.5),
+                                        thumbColor: Colors.white70,
                                       ),
                                       child: Slider(
                                         min: 0.0,
@@ -421,7 +643,7 @@ class PlayerDashboard extends StatelessWidget {
                                       ),
                                     ),
                                   ),
-                                  Icon(Icons.volume_up_rounded, size: 16, color: Colors.white.withValues(alpha: 0.5)),
+                                  Icon(CupertinoIcons.volume_up, size: 14, color: Colors.white.withValues(alpha: 0.4)),
                                 ],
                               ),
                             ],
@@ -450,7 +672,7 @@ class PlaceholderView extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.lock_clock_rounded, size: 48, color: Colors.white.withValues(alpha: 0.3)),
+          Icon(CupertinoIcons.lock_fill, size: 44, color: Colors.white.withValues(alpha: 0.3)),
           const SizedBox(height: 16),
           Text(
             title,
@@ -459,7 +681,7 @@ class PlaceholderView extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             'Target view for future phases of application roadmap.',
-            style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.4)),
+            style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.45)),
           ),
         ],
       ),
@@ -471,7 +693,7 @@ class PlaceholderView extends StatelessWidget {
 // FLOATING LYRICS SECONDARY WINDOW APPLICATION
 // -----------------------------------------------------------------------------
 class SecondaryWindowApp extends StatefulWidget {
-  final int windowId;
+  final String windowId;
   final Map<String, dynamic> arguments;
 
   const SecondaryWindowApp({
@@ -488,41 +710,53 @@ class _SecondaryWindowAppState extends State<SecondaryWindowApp> {
   @override
   void initState() {
     super.initState();
-    _initSubWindow();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initSubWindow();
+    });
   }
 
   Future<void> _initSubWindow() async {
-    await windowManager.ensureInitialized();
-    await windowManager.setSize(const Size(450, 300));
-    await windowManager.setTitle("Floating Lyrics Overlay");
-    await windowManager.center();
+    try {
+      await windowManager.ensureInitialized();
+      await windowManager.setSize(const Size(450, 300));
+      await windowManager.setTitle("Floating Lyrics Overlay");
+      await windowManager.center();
+      await windowManager.show();
+    } catch (e) {
+      debugPrint("Error initializing secondary window: $e");
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(brightness: Brightness.dark),
+      theme: ThemeData(
+        brightness: Brightness.dark,
+        useMaterial3: true,
+      ),
       home: Scaffold(
-        backgroundColor: const Color(0xBB000000), // Transparent black
-        body: Container(
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.white.withValues(alpha: 0.1), width: 1),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          padding: const EdgeInsets.all(24),
+        backgroundColor: const Color(0xFF141417), // Solid dark base color to prevent black screen issues
+        body: GlassCard(
+          borderRadius: 20,
+          padding: const EdgeInsets.all(28),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Row(
+              Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.subtitles_rounded, color: Color(0xFFFC3C44), size: 24),
-                  SizedBox(width: 8),
+                  const Icon(CupertinoIcons.chat_bubble_2, color: Color(0xFFFC3C44), size: 20),
+                  const SizedBox(width: 8),
                   Text(
                     'Multi-Window Engine Active',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white70),
+                    style: TextStyle(
+                      fontSize: 12, 
+                      fontWeight: FontWeight.bold, 
+                      color: Colors.white.withValues(alpha: 0.7),
+                      letterSpacing: 0.2,
+                    ),
                   ),
                 ],
               ),
@@ -535,7 +769,12 @@ class _SecondaryWindowAppState extends State<SecondaryWindowApp> {
                     children: [
                       Text(
                         track.name.isNotEmpty ? track.name : 'No Song Playing',
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                        style: const TextStyle(
+                          fontSize: 18, 
+                          fontWeight: FontWeight.bold, 
+                          color: Colors.white,
+                          letterSpacing: -0.3,
+                        ),
                         textAlign: TextAlign.center,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
