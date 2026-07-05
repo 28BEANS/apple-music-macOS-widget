@@ -81,6 +81,8 @@ class AppleMusicBridge: NSObject {
         case "triggerUpdate":
             updateTrackInfo()
             result(nil)
+        case "getArtworkPath":
+            result(getSharedContainerURL()?.appendingPathComponent("artwork.jpg").path)
         default:
             result(FlutterMethodNotImplemented)
         }
@@ -226,7 +228,11 @@ class AppleMusicBridge: NSObject {
     // MARK: - Persistence & Assets
     
     private func getSharedContainerURL() -> URL? {
-        return FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.example.musicWidget")
+        if let url = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.example.musicWidget") {
+            return url
+        }
+        // Fallback to cache directory for local testing when running unsigned
+        return FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
     }
     
     private func saveArtwork() {
@@ -249,9 +255,7 @@ class AppleMusicBridge: NSObject {
             return
         }
         
-        guard let defaults = UserDefaults(suiteName: "group.com.example.musicWidget") else {
-            return
-        }
+        let defaults = UserDefaults(suiteName: "group.com.example.musicWidget") ?? UserDefaults.standard
         
         if let status = dict["status"] as? String, status == "success" {
             defaults.set(dict["name"] as? String, forKey: "trackName")
