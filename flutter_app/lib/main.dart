@@ -710,14 +710,21 @@ class _SecondaryWindowAppState extends State<SecondaryWindowApp> {
   @override
   void initState() {
     super.initState();
-    _initSubWindow();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initSubWindow();
+    });
   }
 
   Future<void> _initSubWindow() async {
-    await windowManager.ensureInitialized();
-    await windowManager.setSize(const Size(450, 300));
-    await windowManager.setTitle("Floating Lyrics Overlay");
-    await windowManager.center();
+    try {
+      await windowManager.ensureInitialized();
+      await windowManager.setSize(const Size(450, 300));
+      await windowManager.setTitle("Floating Lyrics Overlay");
+      await windowManager.center();
+      await windowManager.show();
+    } catch (e) {
+      debugPrint("Error initializing secondary window: $e");
+    }
   }
 
   @override
@@ -729,7 +736,7 @@ class _SecondaryWindowAppState extends State<SecondaryWindowApp> {
         useMaterial3: true,
       ),
       home: Scaffold(
-        backgroundColor: Colors.transparent, // Fully transparent back for frosted effect
+        backgroundColor: const Color(0xFF141417), // Solid dark base color to prevent black screen issues
         body: GlassCard(
           borderRadius: 20,
           padding: const EdgeInsets.all(28),
