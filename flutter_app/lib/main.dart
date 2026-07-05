@@ -13,7 +13,7 @@ void main(List<String> args) async {
 
   // Route to secondary window if started with 'multi_window' argument
   if (args.firstOrNull == 'multi_window') {
-    final windowId = int.parse(args[1]);
+    final windowId = args[1];
     final Map<String, dynamic> arguments = args[2].isNotEmpty ? json.decode(args[2]) : {};
     runApp(SecondaryWindowApp(windowId: windowId, arguments: arguments));
     return;
@@ -693,7 +693,7 @@ class PlaceholderView extends StatelessWidget {
 // FLOATING LYRICS SECONDARY WINDOW APPLICATION
 // -----------------------------------------------------------------------------
 class SecondaryWindowApp extends StatefulWidget {
-  final int windowId;
+  final String windowId;
   final Map<String, dynamic> arguments;
 
   const SecondaryWindowApp({
