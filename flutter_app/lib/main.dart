@@ -31,6 +31,7 @@ void main(List<String> args) async {
   );
   
   windowManager.waitUntilReadyToShow(windowOptions, () async {
+    await windowManager.setResizable(false);
     await windowManager.show();
     await windowManager.focus();
   });
