@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:ui';
@@ -5,6 +6,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 import 'x_models/track_model.dart';
+import 'x_services/lyrics_service.dart';
 import 'x_services/music_service.dart';
 import 'x_services/window_service.dart';
 
@@ -706,19 +708,54 @@ class SecondaryWindowApp extends StatefulWidget {
   State<SecondaryWindowApp> createState() => _SecondaryWindowAppState();
 }
 
+class SyncedLine {
+  final Duration time;
+  final String text;
+  SyncedLine({required this.time, required this.text});
+}
+
 class _SecondaryWindowAppState extends State<SecondaryWindowApp> {
+  String _plainLyrics = '';
+  String _syncedLyricsText = '';
+  List<SyncedLine> _syncedLines = [];
+  bool _isLoading = false;
+  String _lyricsSource = '';
+  TrackModel? _lastTrack;
+
+  // Real-time local ticking playback progress for synced lyrics
+  Timer? _progressTimer;
+  double _localPlaybackPosition = 0.0;
+  DateTime? _lastTickTime;
+
+  // Scrolling support
+  final ScrollController _scrollController = ScrollController();
+  int _lastActiveIndex = -1;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initSubWindow();
     });
+
+    // Subscribe to track notifications
+    MusicService.instance.currentTrack.addListener(_onTrackChanged);
+    _onTrackChanged();
+  }
+
+  @override
+  void dispose() {
+    MusicService.instance.currentTrack.removeListener(_onTrackChanged);
+    _stopProgressTimer();
+    _scrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _initSubWindow() async {
     try {
       await windowManager.ensureInitialized();
-      await windowManager.setSize(const Size(450, 300));
+      await windowManager.setSize(const Size(450, 550));
+      await windowManager.setMinimumSize(const Size(350, 400));
       await windowManager.setTitle("Floating Lyrics Overlay");
       await windowManager.center();
       await windowManager.show();
@@ -727,74 +764,415 @@ class _SecondaryWindowAppState extends State<SecondaryWindowApp> {
     }
   }
 
+  void _onTrackChanged() {
+    final track = MusicService.instance.currentTrack.value;
+    
+    // Check if the song has actually changed
+    final songChanged = _lastTrack == null || 
+                        _lastTrack!.name != track.name || 
+                        _lastTrack!.artist != track.artist;
+                        
+    _lastTrack = track;
+
+    // Align playback state ticking
+    _localPlaybackPosition = track.position;
+    _lastTickTime = DateTime.now();
+    _stopProgressTimer();
+    if (track.isPlaying) {
+      _startProgressTimer();
+    }
+
+    if (!songChanged) {
+      // Just progress update, no need to refetch lyrics
+      return;
+    }
+
+    if (track.name.isEmpty || track.artist.isEmpty) {
+      setState(() {
+        _plainLyrics = '';
+        _syncedLyricsText = '';
+        _syncedLines = [];
+        _lyricsSource = '';
+        _isLoading = false;
+      });
+      return;
+    }
+
+    // Refetch lyrics for the new song
+    setState(() {
+      _isLoading = true;
+      _plainLyrics = '';
+      _syncedLyricsText = '';
+      _syncedLines = [];
+      _lyricsSource = '';
+      _lastActiveIndex = -1;
+    });
+
+    LyricsService.instance.fetchLyrics(
+      track: track.name,
+      artist: track.artist,
+      album: track.album,
+      duration: track.duration,
+    ).then((res) {
+      if (!mounted) return;
+      
+      // Ensure the user hasn't changed tracks while we were fetching
+      final current = MusicService.instance.currentTrack.value;
+      if (current.name != track.name || current.artist != track.artist) {
+        return;
+      }
+
+      setState(() {
+        _isLoading = false;
+        if (res != null) {
+          _plainLyrics = res['plainLyrics'] ?? '';
+          _syncedLyricsText = res['syncedLyrics'] ?? '';
+          _syncedLines = _parseLrc(_syncedLyricsText);
+          _lyricsSource = res['source'] ?? '';
+        } else {
+          _plainLyrics = '';
+          _syncedLyricsText = '';
+          _syncedLines = [];
+          _lyricsSource = 'None';
+        }
+      });
+    }).catchError((e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _plainLyrics = '';
+        _syncedLyricsText = '';
+        _syncedLines = [];
+        _lyricsSource = 'Error';
+      });
+    });
+  }
+
+  void _startProgressTimer() {
+    _progressTimer = Timer.periodic(const Duration(milliseconds: 200), (timer) {
+      if (!mounted) return;
+      final now = DateTime.now();
+      if (_lastTickTime == null) {
+        _lastTickTime = now;
+        return;
+      }
+      final delta = now.difference(_lastTickTime!).inMilliseconds / 1000.0;
+      _lastTickTime = now;
+
+      final track = MusicService.instance.currentTrack.value;
+      setState(() {
+        _localPlaybackPosition = (_localPlaybackPosition + delta).clamp(0.0, track.duration);
+      });
+    });
+  }
+
+  void _stopProgressTimer() {
+    _progressTimer?.cancel();
+    _progressTimer = null;
+  }
+
+  List<SyncedLine> _parseLrc(String lrcText) {
+    if (lrcText.isEmpty) return [];
+    final List<SyncedLine> list = [];
+    final lines = lrcText.split('\n');
+    final timeRegExp = RegExp(r'\[(\d+):(\d+)(?:\.(\d+))?\]');
+    
+    for (final line in lines) {
+      final matches = timeRegExp.allMatches(line);
+      if (matches.isEmpty) continue;
+      
+      final lastMatch = matches.last;
+      final text = line.substring(lastMatch.end).trim();
+      
+      for (final match in matches) {
+        final min = int.parse(match.group(1)!);
+        final sec = int.parse(match.group(2)!);
+        final msStr = match.group(3) ?? '0';
+        int ms = int.parse(msStr);
+        
+        if (msStr.length == 2) {
+          ms *= 10;
+        } else if (msStr.length == 1) {
+          ms *= 100;
+        }
+        
+        final time = Duration(minutes: min, seconds: sec, milliseconds: ms);
+        list.add(SyncedLine(time: time, text: text));
+      }
+    }
+    list.sort((a, b) => a.time.compareTo(b.time));
+    return list;
+  }
+
+  int _getActiveLyricsIndex() {
+    if (_syncedLines.isEmpty) return -1;
+    int activeIndex = -1;
+    for (int i = 0; i < _syncedLines.length; i++) {
+      if (_localPlaybackPosition >= _syncedLines[i].time.inMilliseconds / 1000.0) {
+        activeIndex = i;
+      } else {
+        break;
+      }
+    }
+    return activeIndex;
+  }
+
+  void _scrollToActiveLine(int index) {
+    if (!_scrollController.hasClients || index < 0) return;
+    
+    // Estimate target offset (approx 48px per line)
+    // Center the active line (using half of typical lyrics screen viewport height)
+    const double estimatedLineHeight = 48.0;
+    const double viewportCenterHeight = 180.0;
+    final double targetOffset = (index * estimatedLineHeight) - viewportCenterHeight;
+    
+    _scrollController.animateTo(
+      targetOffset.clamp(0.0, _scrollController.position.maxScrollExtent),
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeInOut,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final activeIndex = _getActiveLyricsIndex();
+    if (activeIndex != _lastActiveIndex) {
+      _lastActiveIndex = activeIndex;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scrollToActiveLine(activeIndex);
+      });
+    }
+
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.dark,
         useMaterial3: true,
+        fontFamily: 'SF Pro Display', // standard premium macOS font family name
       ),
       home: Scaffold(
-        backgroundColor: const Color(0xFF141417), // Solid dark base color to prevent black screen issues
-        body: GlassCard(
-          borderRadius: 20,
-          padding: const EdgeInsets.all(28),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+        backgroundColor: const Color(0xFF0F0F11),
+        body: ValueListenableBuilder<TrackModel>(
+          valueListenable: MusicService.instance.currentTrack,
+          builder: (context, track, _) {
+            final trackPlaying = track.name.isNotEmpty;
+
+            return GlassCard(
+              borderRadius: 0, // Fill the window completely for secondary window overlays
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Icon(CupertinoIcons.chat_bubble_2, color: Color(0xFFFC3C44), size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Multi-Window Engine Active',
-                    style: TextStyle(
-                      fontSize: 12, 
-                      fontWeight: FontWeight.bold, 
-                      color: Colors.white.withValues(alpha: 0.7),
-                      letterSpacing: 0.2,
+                  // Windows Title Bar Metadata Area
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(CupertinoIcons.music_mic, color: Color(0xFFFC3C44), size: 16),
+                          const SizedBox(width: 8),
+                          Text(
+                            trackPlaying ? 'Now Resolving' : 'Standby',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white.withValues(alpha: 0.6),
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (_lyricsSource.isNotEmpty && _lyricsSource != 'None')
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFC3C44).withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: const Color(0xFFFC3C44).withValues(alpha: 0.25), width: 0.5),
+                          ),
+                          child: Text(
+                            'Source: $_lyricsSource',
+                            style: const TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFFFC3C44),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Track Info Header
+                  if (trackPlaying) ...[
+                    Text(
+                      track.name,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                        letterSpacing: -0.3,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
+                    const SizedBox(height: 4),
+                    Text(
+                      track.artist,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w400,
+                        color: Colors.white.withValues(alpha: 0.6),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 20),
+                    const Divider(color: Colors.white10, height: 1),
+                    const SizedBox(height: 16),
+                  ],
+
+                  // Lyrics Viewport Container
+                  Expanded(
+                    child: _buildLyricsContent(track),
                   ),
                 ],
               ),
-              const SizedBox(height: 32),
-              
-              ValueListenableBuilder<TrackModel>(
-                valueListenable: MusicService.instance.currentTrack,
-                builder: (context, track, _) {
-                  return Column(
-                    children: [
-                      Text(
-                        track.name.isNotEmpty ? track.name : 'No Song Playing',
-                        style: const TextStyle(
-                          fontSize: 18, 
-                          fontWeight: FontWeight.bold, 
-                          color: Colors.white,
-                          letterSpacing: -0.3,
-                        ),
-                        textAlign: TextAlign.center,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        track.artist.isNotEmpty ? track.artist : 'Select a track in Apple Music',
-                        style: TextStyle(fontSize: 13, color: Colors.white.withValues(alpha: 0.6)),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  );
-                },
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLyricsContent(TrackModel track) {
+    if (track.name.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(CupertinoIcons.music_note, color: Colors.white24, size: 48),
+            SizedBox(height: 16),
+            Text(
+              'No Track Playing',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white54),
+            ),
+            SizedBox(height: 6),
+            Text(
+              'Play a song in Apple Music to view lyrics',
+              style: TextStyle(fontSize: 12, color: Colors.white38),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_isLoading) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CupertinoActivityIndicator(radius: 12, color: Color(0xFFFC3C44)),
+            SizedBox(height: 16),
+            Text(
+              'Fetching lyrics...',
+              style: TextStyle(fontSize: 13, color: Colors.white54),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Check if lyrics exist
+    if (_syncedLines.isEmpty && _plainLyrics.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(CupertinoIcons.music_note_2, color: Colors.white24, size: 40),
+            const SizedBox(height: 16),
+            const Text(
+              'Lyrics Unavailable',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white54),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Could not find lyrics for this song',
+              style: TextStyle(fontSize: 12, color: Colors.white38),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Case 1: Synced Lyrics available
+    if (_syncedLines.isNotEmpty) {
+      final activeIndex = _getActiveLyricsIndex();
+      return ListView.builder(
+        controller: _scrollController,
+        itemCount: _syncedLines.length,
+        padding: const EdgeInsets.symmetric(vertical: 40),
+        physics: const BouncingScrollPhysics(),
+        itemBuilder: (context, index) {
+          final line = _syncedLines[index];
+          final isActive = index == activeIndex;
+
+          return InkWell(
+            onTap: () {
+              // Seek to the selected line's time directly
+              MusicService.instance.seek(line.time.inMilliseconds / 1000.0);
+            },
+            borderRadius: BorderRadius.circular(8),
+            hoverColor: Colors.white.withValues(alpha: 0.03),
+            child: AnimatedPadding(
+              duration: const Duration(milliseconds: 200),
+              padding: EdgeInsets.symmetric(
+                vertical: 12, 
+                horizontal: isActive ? 12 : 8
               ),
-              const SizedBox(height: 32),
-              Text(
-                'Window ID: ${widget.windowId}',
-                style: const TextStyle(fontSize: 10, color: Colors.white30),
+              child: AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 250),
+                style: TextStyle(
+                  fontFamily: 'SF Pro Display',
+                  fontSize: isActive ? 18 : 15,
+                  fontWeight: isActive ? FontWeight.w800 : FontWeight.w500,
+                  color: isActive 
+                      ? Colors.white 
+                      : Colors.white.withValues(alpha: 0.35),
+                  height: 1.4,
+                ),
+                child: Text(
+                  line.text,
+                  textAlign: TextAlign.left,
+                ),
               ),
-            ],
+            ),
+          );
+        },
+      );
+    }
+
+    // Case 2: Plain Text Lyrics only
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.only(bottom: 40),
+      child: SelectionArea(
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Text(
+              _plainLyrics,
+              style: const TextStyle(
+                fontFamily: 'SF Pro Display',
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+                color: Colors.white70,
+                height: 1.7,
+              ),
+              textAlign: TextAlign.center,
+            ),
           ),
         ),
       ),
