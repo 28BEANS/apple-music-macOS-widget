@@ -12,6 +12,7 @@ dependencies:
   desktop_multi_window: ^0.3.0
   window_manager: ^0.3.8
   cupertino_icons: ^1.0.8
+  http: ^1.2.0
 
 dev_dependencies:
   flutter_test:
