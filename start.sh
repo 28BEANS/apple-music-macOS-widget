@@ -40,10 +40,23 @@ if [ -z "$GENIUS_API_KEY" ] || [ "$GENIUS_API_KEY" = "your_genius_api_key_here" 
   echo "💡  Genius scraping fallback capability will be disabled."
 fi
 
-# Step 1: Start Backend service
-echo "🚀 Starting lyrics backend service on port 8000..."
+# Step 1: Initialize and Start Python Backend in virtual environment (venv)
+echo "🚀 Initializing and starting lyrics backend service in .venv..."
 cd backend/lyrics
-pnpm start > /dev/null &
+
+if [ ! -d ".venv" ]; then
+  echo "📦 Creating Python virtual environment (.venv)..."
+  python3 -m venv .venv
+  source .venv/bin/activate
+  echo "📥 Installing dependencies from requirements.txt..."
+  pip install --upgrade pip >/dev/null
+  pip install -r requirements.txt >/dev/null
+else
+  source .venv/bin/activate
+fi
+
+# Run the backend in background
+python main.py > /dev/null 2>&1 &
 BACKEND_PID=$!
 cd ../..
 
