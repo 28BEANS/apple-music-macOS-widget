@@ -1,6 +1,6 @@
-# Lyrics Backend Service
+# Lyrics Backend Service (Python)
 
-This is a lightweight Node.js/Express service that resolves timed (synced) and plain text lyrics for the Apple Music Widget+.
+This is a lightweight FastAPI-based service that resolves timed (synced) and plain text lyrics for the Apple Music Widget+.
 
 ## Features
 
@@ -8,19 +8,24 @@ This is a lightweight Node.js/Express service that resolves timed (synced) and p
 - **Genius Fallback Scraper:** Automatically falls back to querying Genius API and scraping the webpage HTML if lyrics are not in LRCLIB.
 - **In-Memory Caching:** Automatically caches lyric lookups to optimize performance and prevent rate limiting.
 
-## Setup
+## Setup & Local Run (Standalone)
 
 1. Make sure you have your API keys in the `.env` file at the root workspace directory:
    ```env
    GENIUS_API_KEY=your_genius_api_key_here
    ```
-2. Install dependencies:
+2. Create and activate a Python virtual environment:
    ```bash
-   pnpm install
+   python3 -m venv .venv
+   source .venv/bin/activate
    ```
-3. Run the development server:
+3. Install dependencies:
    ```bash
-   npm run dev
+   pip install -r requirements.txt
+   ```
+4. Start the server:
+   ```bash
+   python main.py
    ```
    The backend will be running at `http://localhost:8000`.
 
@@ -41,18 +46,4 @@ Resolves the lyrics for the specified track.
 
 ```http
 GET http://localhost:8000/api/lyrics?artist=Justin+Bieber&track=Peaches&duration=198
-```
-
-#### Example Response
-
-```json
-{
-  "success": true,
-  "artist": "Justin Bieber",
-  "track": "Peaches",
-  "album": "",
-  "plainLyrics": "[Chorus: Justin Bieber]\nI got my peaches out in Georgia...",
-  "syncedLyrics": "[00:09.12][Chorus: Justin Bieber]\n[00:10.15]I got my peaches out in Georgia...",
-  "source": "LRCLIB"
-}
 ```
