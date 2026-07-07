@@ -49,3 +49,8 @@ app.*.map.json
 
 **/plans/*
 .cursorrules
+
+# Node.js / Python env
+**/node_modules/
+**/.venv/
+**/venv/
