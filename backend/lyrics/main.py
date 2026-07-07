@@ -54,6 +54,29 @@ def resolve_lyrics(
 def health_check():
     return {"status": "ok", "service": "lyrics-backend"}
 
+import subprocess
+
+def run_applescript(script: str):
+    try:
+        subprocess.run(["osascript", "-e", script], capture_output=True, text=True, check=True)
+    except Exception as e:
+        print(f"Error executing AppleScript: {e}")
+
+@app.post("/api/playpause")
+def control_playpause():
+    run_applescript('tell application "Music" to playpause')
+    return {"status": "success"}
+
+@app.post("/api/next")
+def control_next():
+    run_applescript('tell application "Music" to next track')
+    return {"status": "success"}
+
+@app.post("/api/previous")
+def control_previous():
+    run_applescript('tell application "Music" to previous track')
+    return {"status": "success"}
+
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))
