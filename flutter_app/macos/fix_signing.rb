@@ -13,15 +13,22 @@ project.targets.each do |target|
   puts "   - Set ProvisioningStyle to 'Manual' for target: #{target.name}"
 end
 
-# 2. Update build configurations for all targets to use ad-hoc signing
+# 2. Update project-level build configurations
+project.build_configurations.each do |config|
+  config.build_settings['MACOSX_DEPLOYMENT_TARGET'] = '14.0'
+end
+
+# 3. Update build configurations for all targets to use manual signing
 project.targets.each do |target|
   puts "   - Updating build settings for target: #{target.name}"
   target.build_configurations.each do |config|
-    config.build_settings['CODE_SIGN_IDENTITY'] = '-'
+    config.build_settings['CODE_SIGN_IDENTITY'] = 'Apple Development: vincejerwyn@icloud.com (G9HU9AC9M6)'
+    config.build_settings['CODE_SIGN_IDENTITY[sdk=macosx*]'] = 'Apple Development: vincejerwyn@icloud.com (G9HU9AC9M6)'
     config.build_settings['CODE_SIGN_STYLE'] = 'Manual'
     config.build_settings['DEVELOPMENT_TEAM'] = ''
     config.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = ''
     config.build_settings['PROVISIONING_PROFILE'] = ''
+    config.build_settings['MACOSX_DEPLOYMENT_TARGET'] = '14.0'
     
     # Configure App Sandbox explicitly per target type
     if target.name == 'Runner'
@@ -29,6 +36,7 @@ project.targets.each do |target|
     elsif target.name == 'WidgetExtension'
       config.build_settings['ENABLE_APP_SANDBOX'] = 'YES'
       config.build_settings['GENERATE_INFOPLIST_FILE'] = 'NO'
+      config.build_settings['OTHER_LDFLAGS'] = '-framework Cocoa -framework WidgetKit -framework SwiftUI -framework AppIntents'
     end
   end
 end

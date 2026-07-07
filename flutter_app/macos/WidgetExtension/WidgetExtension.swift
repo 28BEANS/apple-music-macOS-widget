@@ -60,8 +60,20 @@ struct MusicWidgetProvider: TimelineProvider {
     }
     
     private func readCurrentTrack() -> MusicWidgetEntry {
-        let containerPath = NSHomeDirectory()
-        let containerURL = URL(fileURLWithPath: containerPath)
+        guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "4P3L9J4NCH.group.com.vinceevangelista.musicWidget") else {
+            return MusicWidgetEntry(
+                date: Date(),
+                trackName: "",
+                artistName: "",
+                albumName: "",
+                duration: 1.0,
+                position: 0.0,
+                playerState: "stopped",
+                volume: 50,
+                trackId: "",
+                artwork: nil
+            )
+        }
         let stateURL = containerURL.appendingPathComponent("state.json")
         let artworkURL = containerURL.appendingPathComponent("artwork.jpg")
         
@@ -406,7 +418,7 @@ struct MusicWidgetEntryView: View {
 // -----------------------------------------------------------------------------
 
 struct MusicWidget: Widget {
-    let kind: String = "com.example.musicWidget.WidgetExtension"
+    let kind: String = "com.vinceevangelista.musicWidget.WidgetExtension"
     
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: MusicWidgetProvider()) { entry in

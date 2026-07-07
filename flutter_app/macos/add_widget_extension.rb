@@ -69,7 +69,7 @@ target.add_file_references([swift_ref])
 target.build_configurations.each do |config|
   config.build_settings['PRODUCT_NAME'] = 'WidgetExtension'
   config.build_settings['PRODUCT_MODULE_NAME'] = 'WidgetExtension'
-  config.build_settings['PRODUCT_BUNDLE_IDENTIFIER'] = 'com.example.musicWidget.WidgetExtension'
+  config.build_settings['PRODUCT_BUNDLE_IDENTIFIER'] = 'com.vinceevangelista.musicWidget.WidgetExtension'
   config.build_settings['INFOPLIST_FILE'] = 'WidgetExtension/Info.plist'
   config.build_settings['CODE_SIGN_ENTITLEMENTS'] = 'WidgetExtension/WidgetExtension.entitlements'
   config.build_settings['SWIFT_VERSION'] = '5.0'
@@ -77,11 +77,13 @@ target.build_configurations.each do |config|
   config.build_settings['LD_RUNPATH_SEARCH_PATHS'] = '$(inherited) @executable_path/../Frameworks @executable_path/Frameworks'
   config.build_settings['SKIP_INSTALL'] = 'YES'
   config.build_settings['GENERATE_INFOPLIST_FILE'] = 'NO'
-  config.build_settings['CODE_SIGN_IDENTITY'] = '-'
+  config.build_settings['CODE_SIGN_IDENTITY'] = 'Apple Development: vincejerwyn@icloud.com (G9HU9AC9M6)'
+  config.build_settings['CODE_SIGN_IDENTITY[sdk=macosx*]'] = 'Apple Development: vincejerwyn@icloud.com (G9HU9AC9M6)'
   config.build_settings['CODE_SIGN_STYLE'] = 'Manual'
   config.build_settings['DEVELOPMENT_TEAM'] = ''
   config.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = ''
   config.build_settings['PROVISIONING_PROFILE'] = ''
+  config.build_settings['OTHER_LDFLAGS'] = '-framework Cocoa -framework WidgetKit -framework SwiftUI -framework AppIntents'
 end
 
 # Set up target dependency

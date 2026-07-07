@@ -234,20 +234,7 @@ class AppleMusicBridge: NSObject {
     // MARK: - Persistence & Assets
     
     private func getSharedContainerURL() -> URL? {
-        let home = FileManager.default.homeDirectoryForCurrentUser
-        let container = home.appendingPathComponent("Library/Containers/com.example.musicWidget.WidgetExtension/Data")
-        do {
-            try FileManager.default.createDirectory(at: container, withIntermediateDirectories: true, attributes: nil)
-            return container
-        } catch {
-            print("Failed to resolve/create Widget container URL: \(error). Falling back to cache directory.")
-            if let cacheURL = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first {
-                let appCacheURL = cacheURL.appendingPathComponent("com.example.musicWidget")
-                try? FileManager.default.createDirectory(at: appCacheURL, withIntermediateDirectories: true, attributes: nil)
-                return appCacheURL
-            }
-            return nil
-        }
+        return FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "4P3L9J4NCH.group.com.vinceevangelista.musicWidget")
     }
     
     private func saveArtwork() {
@@ -278,7 +265,7 @@ class AppleMusicBridge: NSObject {
             return
         }
         
-        let defaults = UserDefaults(suiteName: "group.com.example.musicWidget") ?? UserDefaults.standard
+        let defaults = UserDefaults(suiteName: "group.com.vinceevangelista.musicWidget") ?? UserDefaults.standard
         
         if let status = dict["status"] as? String, status == "success" {
             defaults.set(dict["name"] as? String, forKey: "trackName")
