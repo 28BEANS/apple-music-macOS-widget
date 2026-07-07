@@ -25,5 +25,7 @@
 		<key>NSExtensionPointIdentifier</key>
 		<string>com.apple.widgetkit-extension</string>
 	</dict>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>This widget requires permission to control Apple Music and skip/pause songs.</string>
 </dict>
 </plist>
