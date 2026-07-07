@@ -2,6 +2,7 @@ import Cocoa
 import FlutterMacOS
 import Foundation
 import desktop_multi_window
+import WidgetKit
 
 class MainFlutterWindow: NSWindow {
   var bridge: AppleMusicBridge?
@@ -107,6 +108,11 @@ class AppleMusicBridge: NSObject {
         let json = getPlaybackState()
         updateSharedDefaults(jsonString: json)
         saveArtwork()
+        
+        // Invalidate and reload WidgetKit timelines
+        if #available(macOS 11.0, *) {
+            WidgetCenter.shared.reloadAllTimelines()
+        }
         
         // Broadcast track update to all active Flutter window engines
         DispatchQueue.main.async { [weak self] in
@@ -228,25 +234,20 @@ class AppleMusicBridge: NSObject {
     // MARK: - Persistence & Assets
     
     private func getSharedContainerURL() -> URL? {
-        if let url = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.example.musicWidget") {
-            do {
-                try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true, attributes: nil)
-                let testURL = url.appendingPathComponent(".writable_test")
-                try "test".write(to: testURL, atomically: true, encoding: .utf8)
-                try FileManager.default.removeItem(at: testURL)
-                return url
-            } catch {
-                print("App Group container is not writable/creatable: \(error.localizedDescription). Falling back to Caches directory.")
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let container = home.appendingPathComponent("Library/Containers/com.example.musicWidget.WidgetExtension/Data")
+        do {
+            try FileManager.default.createDirectory(at: container, withIntermediateDirectories: true, attributes: nil)
+            return container
+        } catch {
+            print("Failed to resolve/create Widget container URL: \(error). Falling back to cache directory.")
+            if let cacheURL = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first {
+                let appCacheURL = cacheURL.appendingPathComponent("com.example.musicWidget")
+                try? FileManager.default.createDirectory(at: appCacheURL, withIntermediateDirectories: true, attributes: nil)
+                return appCacheURL
             }
+            return nil
         }
-        
-        // Fallback to cache directory for local testing when running unsigned
-        if let cacheURL = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first {
-            let appCacheURL = cacheURL.appendingPathComponent("com.example.musicWidget")
-            try? FileManager.default.createDirectory(at: appCacheURL, withIntermediateDirectories: true, attributes: nil)
-            return appCacheURL
-        }
-        return nil
     }
     
     private func saveArtwork() {
@@ -264,6 +265,14 @@ class AppleMusicBridge: NSObject {
     }
     
     private func updateSharedDefaults(jsonString: String) {
+        guard let containerURL = getSharedContainerURL() else { return }
+        let stateURL = containerURL.appendingPathComponent("state.json")
+        do {
+            try jsonString.write(to: stateURL, atomically: true, encoding: .utf8)
+        } catch {
+            print("Failed to save state.json: \(error)")
+        }
+        
         guard let data = jsonString.data(using: .utf8),
               let dict = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] else {
             return
