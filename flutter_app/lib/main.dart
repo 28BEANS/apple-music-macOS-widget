@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -385,8 +386,99 @@ class GlassCard extends StatelessWidget {
 // -----------------------------------------------------------------------------
 // PLAYER DASHBOARD
 // -----------------------------------------------------------------------------
-class PlayerDashboard extends StatelessWidget {
+class PlayerDashboard extends StatefulWidget {
   const PlayerDashboard({super.key});
+
+  @override
+  State<PlayerDashboard> createState() => _PlayerDashboardState();
+}
+
+class _PlayerDashboardState extends State<PlayerDashboard> {
+  Timer? _progressTimer;
+  double _localPlaybackPosition = 0.0;
+  DateTime? _lastTickTime;
+  TrackModel? _lastTrack;
+  Uint8List? _artworkBytes;
+  bool _isDragging = false;
+
+  @override
+  void initState() {
+    super.initState();
+    MusicService.instance.currentTrack.addListener(_onTrackChanged);
+    _onTrackChanged();
+  }
+
+  @override
+  void dispose() {
+    MusicService.instance.currentTrack.removeListener(_onTrackChanged);
+    _stopProgressTimer();
+    super.dispose();
+  }
+
+  void _onTrackChanged() {
+    if (!mounted) return;
+    final track = MusicService.instance.currentTrack.value;
+    
+    final songChanged = _lastTrack == null || 
+                        _lastTrack!.name != track.name || 
+                        _lastTrack!.artist != track.artist;
+    _lastTrack = track;
+
+    if (songChanged) {
+      setState(() {
+        _artworkBytes = null;
+      });
+      MusicService.instance.getArtworkPath().then((path) {
+        if (path != null) {
+          final file = File(path);
+          if (file.existsSync()) {
+            try {
+              final bytes = file.readAsBytesSync();
+              if (bytes.isNotEmpty && mounted) {
+                setState(() {
+                  _artworkBytes = bytes;
+                });
+              }
+            } catch (_) {}
+          }
+        }
+      });
+    }
+
+    setState(() {
+      _localPlaybackPosition = track.position;
+      _lastTickTime = DateTime.now();
+      _stopProgressTimer();
+      if (track.isPlaying) {
+        _startProgressTimer();
+      }
+    });
+  }
+
+  void _startProgressTimer() {
+    _progressTimer = Timer.periodic(const Duration(milliseconds: 200), (timer) {
+      if (!mounted) return;
+      final now = DateTime.now();
+      if (_lastTickTime == null) {
+        _lastTickTime = now;
+        return;
+      }
+      final delta = now.difference(_lastTickTime!).inMilliseconds / 1000.0;
+      _lastTickTime = now;
+
+      if (_isDragging) return;
+
+      final track = MusicService.instance.currentTrack.value;
+      setState(() {
+        _localPlaybackPosition = (_localPlaybackPosition + delta).clamp(0.0, track.duration);
+      });
+    });
+  }
+
+  void _stopProgressTimer() {
+    _progressTimer?.cancel();
+    _progressTimer = null;
+  }
 
   String _formatDuration(double seconds) {
     if (seconds.isNaN || seconds.isInfinite) return '0:00';
@@ -460,30 +552,16 @@ class PlayerDashboard extends StatelessWidget {
                           ),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(16),
-                            child: FutureBuilder<String?>(
-                              future: MusicService.instance.getArtworkPath(),
-                              builder: (context, snapshot) {
-                                if (snapshot.hasData && snapshot.data != null) {
-                                  final file = File(snapshot.data!);
-                                  if (file.existsSync()) {
-                                    try {
-                                      final bytes = file.readAsBytesSync();
-                                      if (bytes.isNotEmpty) {
-                                        return Image.memory(bytes, fit: BoxFit.cover);
-                                      }
-                                    } catch (_) {}
-                                  }
-                                }
-                                return Container(
-                                  color: const Color(0x10FFFFFF),
-                                  child: const Icon(
-                                    CupertinoIcons.music_note, 
-                                    size: 54, 
-                                    color: Colors.white30
+                            child: _artworkBytes != null
+                                ? Image.memory(_artworkBytes!, fit: BoxFit.cover)
+                                : Container(
+                                    color: const Color(0x10FFFFFF),
+                                    child: const Icon(
+                                      CupertinoIcons.music_note, 
+                                      size: 54, 
+                                      color: Colors.white30
+                                    ),
                                   ),
-                                );
-                              },
-                            ),
                           ),
                         ),
                         const SizedBox(width: 28),
@@ -527,7 +605,7 @@ class PlayerDashboard extends StatelessWidget {
                               Row(
                                 children: [
                                   Text(
-                                    _formatDuration(track.position),
+                                    _formatDuration(_localPlaybackPosition),
                                     style: TextStyle(
                                       fontSize: 10, 
                                       fontFamily: 'monospace',
@@ -549,9 +627,17 @@ class PlayerDashboard extends StatelessWidget {
                                       child: Slider(
                                         min: 0.0,
                                         max: track.duration > 0 ? track.duration : 1.0,
-                                        value: track.position <= track.duration ? track.position : 0.0,
-                                        onChanged: (val) {},
+                                        value: _localPlaybackPosition <= track.duration ? _localPlaybackPosition : 0.0,
+                                        onChanged: (val) {
+                                          setState(() {
+                                            _isDragging = true;
+                                            _localPlaybackPosition = val;
+                                          });
+                                        },
                                         onChangeEnd: (val) {
+                                          setState(() {
+                                            _isDragging = false;
+                                          });
                                           MusicService.instance.seek(val);
                                         },
                                       ),
