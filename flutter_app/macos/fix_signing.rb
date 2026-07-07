@@ -23,8 +23,11 @@ project.targets.each do |target|
     config.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = ''
     config.build_settings['PROVISIONING_PROFILE'] = ''
     
-    # Ensure generated plist settings don't override manually provided plist
-    if target.name == 'WidgetExtension'
+    # Configure App Sandbox explicitly per target type
+    if target.name == 'Runner'
+      config.build_settings['ENABLE_APP_SANDBOX'] = 'NO'
+    elsif target.name == 'WidgetExtension'
+      config.build_settings['ENABLE_APP_SANDBOX'] = 'YES'
       config.build_settings['GENERATE_INFOPLIST_FILE'] = 'NO'
     end
   end

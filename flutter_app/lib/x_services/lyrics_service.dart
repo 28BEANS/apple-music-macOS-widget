@@ -7,7 +7,7 @@ class LyricsService {
   LyricsService._();
 
   // Point to the local backend lyrics proxy
-  static const String _backendUrl = 'http://localhost:8000';
+  static const String _backendUrl = 'http://127.0.0.1:8000';
 
   /// Fetches lyrics for the given song parameters.
   /// Returns a map with `plainLyrics`, `syncedLyrics`, and `source` if successful, or null on error.

@@ -114,6 +114,19 @@ struct MusicWidgetProvider: TimelineProvider {
 // INTERACTIVE CONTROL INTENTS (macOS 14+)
 // -----------------------------------------------------------------------------
 
+private func callBackend(endpoint: String) {
+    guard let url = URL(string: "http://127.0.0.1:8000/api/\(endpoint)") else { return }
+    var request = URLRequest(url: url)
+    request.httpMethod = "POST"
+    
+    let semaphore = DispatchSemaphore(value: 0)
+    let task = URLSession.shared.dataTask(with: request) { _, _, _ in
+        semaphore.signal()
+    }
+    task.resume()
+    _ = semaphore.wait(timeout: .now() + 1.2)
+}
+
 struct PlayPauseIntent: AppIntent {
     static var title: LocalizedStringResource = "Play/Pause"
     static var description = IntentDescription("Toggles Apple Music play/pause state.")
@@ -121,11 +134,7 @@ struct PlayPauseIntent: AppIntent {
     init() {}
     
     func perform() async throws -> some IntentResult {
-        let source = "tell application \"Music\" to playpause"
-        if let script = NSAppleScript(source: source) {
-            var error: NSDictionary?
-            script.executeAndReturnError(&error)
-        }
+        callBackend(endpoint: "playpause")
         WidgetCenter.shared.reloadAllTimelines()
         return .result()
     }
@@ -138,11 +147,7 @@ struct NextTrackIntent: AppIntent {
     init() {}
     
     func perform() async throws -> some IntentResult {
-        let source = "tell application \"Music\" to next track"
-        if let script = NSAppleScript(source: source) {
-            var error: NSDictionary?
-            script.executeAndReturnError(&error)
-        }
+        callBackend(endpoint: "next")
         WidgetCenter.shared.reloadAllTimelines()
         return .result()
     }
@@ -155,11 +160,7 @@ struct PreviousTrackIntent: AppIntent {
     init() {}
     
     func perform() async throws -> some IntentResult {
-        let source = "tell application \"Music\" to previous track"
-        if let script = NSAppleScript(source: source) {
-            var error: NSDictionary?
-            script.executeAndReturnError(&error)
-        }
+        callBackend(endpoint: "previous")
         WidgetCenter.shared.reloadAllTimelines()
         return .result()
     }
