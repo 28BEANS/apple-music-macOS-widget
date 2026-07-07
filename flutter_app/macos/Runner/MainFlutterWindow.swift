@@ -229,10 +229,24 @@ class AppleMusicBridge: NSObject {
     
     private func getSharedContainerURL() -> URL? {
         if let url = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.example.musicWidget") {
-            return url
+            do {
+                try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true, attributes: nil)
+                let testURL = url.appendingPathComponent(".writable_test")
+                try "test".write(to: testURL, atomically: true, encoding: .utf8)
+                try FileManager.default.removeItem(at: testURL)
+                return url
+            } catch {
+                print("App Group container is not writable/creatable: \(error.localizedDescription). Falling back to Caches directory.")
+            }
         }
+        
         // Fallback to cache directory for local testing when running unsigned
-        return FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
+        if let cacheURL = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first {
+            let appCacheURL = cacheURL.appendingPathComponent("com.example.musicWidget")
+            try? FileManager.default.createDirectory(at: appCacheURL, withIntermediateDirectories: true, attributes: nil)
+            return appCacheURL
+        }
+        return nil
     }
     
     private func saveArtwork() {
