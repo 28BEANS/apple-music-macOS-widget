@@ -210,7 +210,9 @@ class _DashboardShellState extends State<DashboardShell> {
             Expanded(
               child: _activeNavIndex == 0
                   ? const PlayerDashboard()
-                  : PlaceholderView(title: ['Widget Settings', 'Listening Statistics', 'Settings'][_activeNavIndex - 1]),
+                  : _activeNavIndex == 1
+                      ? const WidgetConfiguratorPage()
+                      : PlaceholderView(title: ['Listening Statistics', 'Settings'][_activeNavIndex - 2]),
             ),
           ],
         ),
@@ -742,6 +744,649 @@ class _PlayerDashboardState extends State<PlayerDashboard> {
                   );
                 },
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// -----------------------------------------------------------------------------
+// WIDGET CONFIGURATOR / GALLERY
+// -----------------------------------------------------------------------------
+class WidgetConfiguratorPage extends StatefulWidget {
+  const WidgetConfiguratorPage({super.key});
+
+  @override
+  State<WidgetConfiguratorPage> createState() => _WidgetConfiguratorPageState();
+}
+
+class _WidgetConfiguratorPageState extends State<WidgetConfiguratorPage> {
+  final PageController _pageController = PageController();
+  int _currentPage = 0;
+
+  final List<Map<String, String>> _widgetData = [
+    {
+      'title': 'Apple Music Widget+',
+      'description': 'Display and control current Apple Music playback.',
+    },
+    {
+      'title': 'Pins',
+      'description': 'Quickly access your pinned items.',
+    },
+    {
+      'title': 'Recently Played',
+      'description': 'Find all your recently played music, and see what\'s currently playing.',
+    },
+  ];
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  // Helper to build beautiful gradient artwork thumbnails
+  Widget _buildMockArtwork(String text, List<Color> colors, {double size = 48}) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(size * 0.18),
+        gradient: LinearGradient(
+          colors: colors,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.3),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Center(
+        child: Text(
+          text.isNotEmpty ? text[0].toUpperCase() : 'M',
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.8),
+            fontSize: size * 0.35,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          const SizedBox(height: 8),
+          const Text(
+            'Widget Configurator',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+              color: Colors.white,
+              letterSpacing: -0.5,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Select and add widgets directly to your macOS Notification Center',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w400,
+              color: Colors.white.withValues(alpha: 0.45),
+            ),
+          ),
+          const SizedBox(height: 32),
+
+          // Main iOS-style Widget sheet card container
+          Expanded(
+            child: Center(
+              child: Container(
+                width: 440,
+                height: 420,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1C1C1E),
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.08),
+                    width: 1.5,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.5),
+                      blurRadius: 40,
+                      offset: const Offset(0, 20),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    // Top header: "Music", Icon, Close "X"
+                    Padding(
+                      padding: const EdgeInsets.only(left: 20, right: 20, top: 16, bottom: 8),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 24,
+                            height: 24,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFC3C44),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Icon(
+                              CupertinoIcons.music_note,
+                              color: Colors.white,
+                              size: 14,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Music',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const Spacer(),
+                          Icon(
+                            CupertinoIcons.xmark,
+                            color: Colors.white.withValues(alpha: 0.4),
+                            size: 16,
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Titles & Description block (synchronized with PageView)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                      child: Column(
+                        children: [
+                          Text(
+                            _widgetData[_currentPage]['title']!,
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              letterSpacing: -0.3,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 6),
+                          SizedBox(
+                            height: 32,
+                            child: Text(
+                              _widgetData[_currentPage]['description']!,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.white.withValues(alpha: 0.5),
+                                height: 1.3,
+                              ),
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Carousel Area
+                    Expanded(
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          PageView(
+                            controller: _pageController,
+                            onPageChanged: (index) {
+                              setState(() {
+                                _currentPage = index;
+                              });
+                            },
+                            children: [
+                              _buildMediumWidgetPreview(),
+                              _buildPinsWidgetPreview(),
+                              _buildRecentlyPlayedWidgetPreview(),
+                            ],
+                          ),
+                          // Arrow Left
+                          if (_currentPage > 0)
+                            Positioned(
+                              left: 12,
+                              child: IconButton(
+                                icon: const Icon(CupertinoIcons.chevron_left, color: Colors.white60),
+                                onPressed: () {
+                                  _pageController.previousPage(
+                                    duration: const Duration(milliseconds: 300),
+                                    curve: Curves.easeInOut,
+                                  );
+                                },
+                              ),
+                            ),
+                          // Arrow Right
+                          if (_currentPage < 2)
+                            Positioned(
+                              right: 12,
+                              child: IconButton(
+                                icon: const Icon(CupertinoIcons.chevron_right, color: Colors.white60),
+                                onPressed: () {
+                                  _pageController.nextPage(
+                                    duration: const Duration(milliseconds: 300),
+                                    curve: Curves.easeInOut,
+                                  );
+                                },
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+
+                    // Dots Indicator
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(10, (index) {
+                          // The first 3 dots represent the widgets, the others are extra pagination page indicators to look like iOS Widget Gallery
+                          final bool isWidgetDot = index < 3;
+                          final bool isActive = index == _currentPage;
+                          return Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 4),
+                            width: 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: isActive
+                                  ? Colors.white
+                                  : isWidgetDot
+                                      ? Colors.white.withValues(alpha: 0.3)
+                                      : Colors.white.withValues(alpha: 0.1),
+                            ),
+                          );
+                        }),
+                      ),
+                    ),
+
+                    // Add Widget Button
+                    Padding(
+                      padding: const EdgeInsets.only(left: 32, right: 32, bottom: 24),
+                      child: SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: TextButton(
+                          onPressed: () {
+                            // Non-functional mock feedback
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Added ${_widgetData[_currentPage]['title']} Widget to desktop'),
+                                backgroundColor: const Color(0xFFFC3C44),
+                                duration: const Duration(seconds: 2),
+                              ),
+                            );
+                          },
+                          style: TextButton.styleFrom(
+                            backgroundColor: const Color(0xFFFC3C44),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(24),
+                            ),
+                          ),
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(CupertinoIcons.add, color: Colors.white, size: 16),
+                              SizedBox(width: 6),
+                              Text(
+                                'Add Widget',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Previews:
+  // 1. Medium Widget View Preview
+  Widget _buildMediumWidgetPreview() {
+    return Center(
+      child: Container(
+        width: 320,
+        height: 150,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          color: const Color(0xFF2C2C2E),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.2),
+              blurRadius: 10,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          children: [
+            // Artwork
+            _buildMockArtwork(
+              'Isolation',
+              [const Color(0xFF3F51B5), const Color(0xFFE91E63)],
+              size: 85,
+            ),
+            const SizedBox(width: 14),
+            // Details
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text(
+                    'Isolation',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Kali Uchis — Isolation',
+                    style: TextStyle(fontSize: 10, color: Colors.white.withValues(alpha: 0.6)),
+                  ),
+                  const SizedBox(height: 12),
+                  // Mock slider
+                  Row(
+                    children: [
+                      Text(
+                        '1:24',
+                        style: TextStyle(fontSize: 8, color: Colors.white.withValues(alpha: 0.4)),
+                      ),
+                      Expanded(
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 6),
+                          height: 3,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(1.5),
+                            color: Colors.white.withValues(alpha: 0.1),
+                          ),
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Container(
+                              width: 45,
+                              height: 3,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(1.5),
+                                color: const Color(0xFFFC3C44),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Text(
+                        '3:47',
+                        style: TextStyle(fontSize: 8, color: Colors.white.withValues(alpha: 0.4)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  // Mock controls
+                  const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(CupertinoIcons.backward_fill, size: 12, color: Colors.white70),
+                      SizedBox(width: 16),
+                      Icon(CupertinoIcons.pause_fill, size: 14, color: Colors.white),
+                      SizedBox(width: 16),
+                      Icon(CupertinoIcons.forward_fill, size: 12, color: Colors.white70),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 2. Pins Widget (Large square) Preview
+  Widget _buildPinsWidgetPreview() {
+    return Center(
+      child: Container(
+        width: 180,
+        height: 180,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          color: const Color(0xFF2C2C2E),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.2),
+              blurRadius: 10,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.all(10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header
+            Row(
+              children: [
+                const Text(
+                  'Pins',
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                ),
+                const Spacer(),
+                Icon(CupertinoIcons.music_note, size: 9, color: Colors.white.withValues(alpha: 0.6)),
+              ],
+            ),
+            const SizedBox(height: 8),
+            // Grid 3x2
+            Expanded(
+              child: GridView.count(
+                crossAxisCount: 3,
+                crossAxisSpacing: 6,
+                mainAxisSpacing: 4,
+                physics: const NeverScrollableScrollPhysics(),
+                childAspectRatio: 0.72,
+                children: [
+                  _buildPinGridItem('Cherry Bomb', [const Color(0xFFFF7B90), const Color(0xFFFFB07C)]),
+                  _buildPinGridItem('DON\'T TAP...', [const Color(0xFFE5E5E5), const Color(0xFF9E9E9E)]),
+                  _buildPinGridItem('CHROM...', [const Color(0xFF4A5D4E), const Color(0xFF1E2620)]),
+                  _buildPinGridItem('Wolf', [const Color(0xFF7CC6FE), const Color(0xFFCBEBFF)]),
+                  _buildPinGridItem('CALL ME...', [const Color(0xFFE6BA80), const Color(0xFF8BA5B5)]),
+                  _buildPinGridItem('Goblin', [const Color(0xFF2C4A44), const Color(0xFF131D1B)]),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPinGridItem(String title, List<Color> colors) {
+    return Column(
+      children: [
+        Expanded(
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(4),
+              gradient: LinearGradient(
+                colors: colors,
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          title,
+          style: TextStyle(fontSize: 6, color: Colors.white.withValues(alpha: 0.8), fontWeight: FontWeight.w500),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
+    );
+  }
+
+  // 3. Recently Played Widget (Large square) Preview
+  Widget _buildRecentlyPlayedWidgetPreview() {
+    return Center(
+      child: Container(
+        width: 180,
+        height: 180,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          color: const Color(0xFF2C2C2E),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.2),
+              blurRadius: 10,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.all(10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Top section: hero
+            Row(
+              children: [
+                _buildMockArtwork(
+                  'Isolation',
+                  [const Color(0xFF3F51B5), const Color(0xFFE91E63)],
+                  size: 40,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Isolation',
+                        style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Colors.white),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        'Kali Uchis',
+                        style: TextStyle(fontSize: 6, color: Colors.white.withValues(alpha: 0.5)),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      // Mock play button pill
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(CupertinoIcons.play_fill, size: 4, color: Colors.white),
+                            SizedBox(width: 2),
+                            Text(
+                              'Play',
+                              style: TextStyle(fontSize: 5, color: Colors.white, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'RECENTLY PLAYED',
+              style: TextStyle(fontSize: 5, fontWeight: FontWeight.bold, color: Colors.white.withValues(alpha: 0.4), letterSpacing: 0.5),
+            ),
+            const SizedBox(height: 2),
+            // 3 rows list
+            _buildRecentListRow('This Is How Tomorrow Moves', 'beabadoobee', [const Color(0xFFF48FB1), const Color(0xFFFFD54F)]),
+            _buildRecentListRow('?', 'beans', [const Color(0xFFFFD54F), const Color(0xFF000000)]),
+            _buildRecentListRow('Do That Again', 'Malcolm Todd', [const Color(0xFFFF5252), const Color(0xFFFF7A00)]),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRecentListRow(String title, String artist, List<Color> colors) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2.0),
+      child: Row(
+        children: [
+          Container(
+            width: 18,
+            height: 18,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(3),
+              gradient: LinearGradient(
+                colors: colors,
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(fontSize: 6, fontWeight: FontWeight.bold, color: Colors.white),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  artist,
+                  style: TextStyle(fontSize: 5, color: Colors.white.withValues(alpha: 0.5)),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          Container(
+            width: 12,
+            height: 12,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white.withValues(alpha: 0.08),
+            ),
+            child: const Center(
+              child: Icon(CupertinoIcons.play_fill, size: 5, color: Colors.white60),
             ),
           ),
         ],
