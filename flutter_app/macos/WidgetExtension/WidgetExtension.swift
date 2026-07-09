@@ -936,7 +936,7 @@ struct PinsWidget: Widget {
         }
         .configurationDisplayName("Pins")
         .description("Quickly access your pinned items.")
-        .supportedFamilies([.systemMedium])
+        .supportedFamilies([.systemLarge])
     }
 }
 
@@ -952,7 +952,7 @@ struct RecentlyPlayedWidget: Widget {
         }
         .configurationDisplayName("Recently Played")
         .description("Find all your recently played music, and see what's currently playing.")
-        .supportedFamilies([.systemMedium])
+        .supportedFamilies([.systemLarge])
     }
 }
 
