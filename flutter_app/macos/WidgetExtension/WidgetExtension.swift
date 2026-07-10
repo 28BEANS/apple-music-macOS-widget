@@ -602,7 +602,109 @@ struct MediumWidgetView: View {
 // PINS WIDGET VIEW
 // -----------------------------------------------------------------------------
 
-struct PinsWidgetView: View {
+// Small: single featured album art + "Pins" label
+struct PinsSmallWidgetView: View {
+    var entry: PinsWidgetProvider.Entry
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Image(systemName: "pin.fill")
+                .font(.system(size: 13))
+                .foregroundColor(.white.opacity(0.6))
+
+            Spacer()
+
+            if let first = entry.pins.first {
+                if let artwork = first.artwork {
+                    Image(nsImage: artwork)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: 52, height: 52)
+                        .cornerRadius(10)
+                        .shadow(color: .black.opacity(0.3), radius: 3, x: 0, y: 2)
+                } else {
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(LinearGradient(
+                            colors: [Color.white.opacity(0.13), Color.white.opacity(0.05)],
+                            startPoint: .topLeading, endPoint: .bottomTrailing))
+                        .frame(width: 52, height: 52)
+                        .overlay(Image(systemName: "music.note")
+                            .font(.system(size: 20))
+                            .foregroundColor(.white.opacity(0.3)))
+                }
+                Text(first.trackName)
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(.white)
+                    .lineLimit(2)
+            } else {
+                Text("Pins")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(.white)
+            }
+        }
+        .padding(14)
+        .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity, alignment: .topLeading)
+    }
+}
+
+// Medium: 3 pins in a single horizontal row
+struct PinsMediumWidgetView: View {
+    var entry: PinsWidgetProvider.Entry
+
+    private func artworkCell(_ pin: PinItem) -> some View {
+        VStack(spacing: 5) {
+            if let artwork = pin.artwork {
+                Image(nsImage: artwork)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(minWidth: 0, maxWidth: .infinity)
+                    .aspectRatio(1, contentMode: .fit)
+                    .cornerRadius(9)
+                    .shadow(color: .black.opacity(0.3), radius: 3, x: 0, y: 2)
+            } else {
+                RoundedRectangle(cornerRadius: 9)
+                    .fill(LinearGradient(
+                        colors: [Color.white.opacity(0.13), Color.white.opacity(0.05)],
+                        startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .aspectRatio(1, contentMode: .fit)
+                    .overlay(Image(systemName: "music.note")
+                        .font(.system(size: 20))
+                        .foregroundColor(.white.opacity(0.3)))
+            }
+            Text(pin.trackName)
+                .font(.system(size: 9, weight: .medium))
+                .foregroundColor(.white.opacity(0.85))
+                .lineLimit(2)
+                .multilineTextAlignment(.center)
+                .frame(minWidth: 0, maxWidth: .infinity)
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Pins")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(.white)
+                Spacer()
+                Image(systemName: "pin.fill")
+                    .font(.system(size: 11))
+                    .foregroundColor(.white.opacity(0.5))
+            }
+            HStack(spacing: 10) {
+                ForEach(0..<min(entry.pins.count, 3), id: \.self) { index in
+                    artworkCell(entry.pins[index])
+                }
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity, alignment: .topLeading)
+    }
+}
+
+// Large: 3×2 grid of album artworks
+struct PinsLargeWidgetView: View {
     var entry: PinsWidgetProvider.Entry
     
     private let columns = [
@@ -619,7 +721,7 @@ struct PinsWidgetView: View {
                     .font(.system(size: 14, weight: .bold))
                     .foregroundColor(.white)
                 Spacer()
-                Image(systemName: "music.note")
+                Image(systemName: "pin.fill")
                     .font(.system(size: 13))
                     .foregroundColor(.white.opacity(0.6))
             }
@@ -674,7 +776,126 @@ struct PinsWidgetView: View {
 // RECENTLY PLAYED WIDGET VIEW
 // -----------------------------------------------------------------------------
 
-struct RecentlyPlayedWidgetView: View {
+// Small: current track artwork + play state
+struct RecentlyPlayedSmallWidgetView: View {
+    var entry: RecentlyPlayedWidgetProvider.Entry
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            if let artwork = entry.currentArtwork {
+                Image(nsImage: artwork)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: 52, height: 52)
+                    .cornerRadius(10)
+                    .shadow(color: .black.opacity(0.3), radius: 3, x: 0, y: 2)
+            } else {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(LinearGradient(
+                        colors: [Color.white.opacity(0.13), Color.white.opacity(0.05)],
+                        startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .frame(width: 52, height: 52)
+                    .overlay(Image(systemName: "music.note")
+                        .font(.system(size: 20))
+                        .foregroundColor(.white.opacity(0.3)))
+            }
+
+            Spacer()
+
+            Text(entry.currentTrackName)
+                .font(.system(size: 11, weight: .bold))
+                .foregroundColor(.white)
+                .lineLimit(2)
+            Text(entry.currentArtistName)
+                .font(.system(size: 9, weight: .medium))
+                .foregroundColor(.white.opacity(0.55))
+                .lineLimit(1)
+        }
+        .padding(14)
+        .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity, alignment: .topLeading)
+    }
+}
+
+// Medium: compact now-playing + 2 recent rows
+struct RecentlyPlayedMediumWidgetView: View {
+    var entry: RecentlyPlayedWidgetProvider.Entry
+
+    var body: some View {
+        HStack(spacing: 14) {
+            // Artwork
+            if let artwork = entry.currentArtwork {
+                Image(nsImage: artwork)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: 90, height: 90)
+                    .cornerRadius(11)
+                    .shadow(color: .black.opacity(0.35), radius: 5, x: 0, y: 2)
+            } else {
+                RoundedRectangle(cornerRadius: 11)
+                    .fill(LinearGradient(
+                        colors: [Color.white.opacity(0.12), Color.white.opacity(0.04)],
+                        startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .frame(width: 90, height: 90)
+                    .overlay(Image(systemName: "music.note")
+                        .font(.system(size: 28))
+                        .foregroundColor(.white.opacity(0.35)))
+            }
+
+            // Right column
+            VStack(alignment: .leading, spacing: 0) {
+                // Now playing
+                Text(entry.currentTrackName)
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(.white)
+                    .lineLimit(1)
+                Text(entry.currentArtistName)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(.white.opacity(0.55))
+                    .lineLimit(1)
+                    .padding(.bottom, 6)
+
+                // Up to 2 recent items
+                ForEach(0..<min(entry.recentItems.count, 2), id: \.self) { index in
+                    let item = entry.recentItems[index]
+                    HStack(spacing: 8) {
+                        if let art = item.artwork {
+                            Image(nsImage: art)
+                                .resizable().aspectRatio(contentMode: .fill)
+                                .frame(width: 28, height: 28).cornerRadius(5)
+                        } else {
+                            RoundedRectangle(cornerRadius: 5)
+                                .fill(Color.white.opacity(0.08))
+                                .frame(width: 28, height: 28)
+                                .overlay(Image(systemName: "music.note")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.white.opacity(0.3)))
+                        }
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(item.trackName)
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundColor(.white)
+                                .lineLimit(1)
+                            if !item.artistName.isEmpty {
+                                Text(item.artistName)
+                                    .font(.system(size: 9))
+                                    .foregroundColor(.white.opacity(0.5))
+                                    .lineLimit(1)
+                            }
+                        }
+                    }
+                    .padding(.vertical, 3)
+                }
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity, alignment: .leading)
+    }
+}
+
+// Large: hero current track + full recently-played list
+struct RecentlyPlayedLargeWidgetView: View {
     var entry: RecentlyPlayedWidgetProvider.Entry
     
     var body: some View {
@@ -709,7 +930,6 @@ struct RecentlyPlayedWidgetView: View {
                 // Track info + Play button
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 0) {
-                        // Music note icon top-right
                         Spacer()
                         Image(systemName: "music.note")
                             .font(.system(size: 12))
@@ -726,7 +946,6 @@ struct RecentlyPlayedWidgetView: View {
                         .foregroundColor(.white.opacity(0.55))
                         .lineLimit(1)
                     
-                    // Play button
                     Button(intent: PlayPauseIntent()) {
                         HStack(spacing: 5) {
                             Image(systemName: entry.playerState == "playing" ? "pause.fill" : "play.fill")
@@ -746,19 +965,16 @@ struct RecentlyPlayedWidgetView: View {
             }
             .padding(.bottom, 10)
             
-            // "RECENTLY PLAYED" section header
             Text("RECENTLY PLAYED")
                 .font(.system(size: 10, weight: .bold))
                 .foregroundColor(.white.opacity(0.45))
                 .tracking(0.8)
                 .padding(.bottom, 6)
             
-            // Recent items list
             VStack(spacing: 0) {
                 ForEach(0..<min(entry.recentItems.count, 3), id: \.self) { index in
                     let item = entry.recentItems[index]
                     HStack(spacing: 10) {
-                        // Small artwork thumbnail
                         if let artwork = item.artwork {
                             Image(nsImage: artwork)
                                 .resizable()
@@ -776,7 +992,6 @@ struct RecentlyPlayedWidgetView: View {
                                 )
                         }
                         
-                        // Track info
                         VStack(alignment: .leading, spacing: 1) {
                             Text(item.trackName)
                                 .font(.system(size: 12, weight: .semibold))
@@ -792,7 +1007,6 @@ struct RecentlyPlayedWidgetView: View {
                         
                         Spacer()
                         
-                        // Play button
                         Image(systemName: "play.fill")
                             .font(.system(size: 10))
                             .foregroundColor(.white.opacity(0.5))
@@ -849,17 +1063,33 @@ struct RecentlyPlayedWidgetBackgroundView: View {
 
 struct PinsWidgetEntryView: View {
     var entry: PinsWidgetProvider.Entry
+    @Environment(\.widgetFamily) var family
     
     var body: some View {
-        PinsWidgetView(entry: entry)
+        switch family {
+        case .systemSmall:
+            PinsSmallWidgetView(entry: entry)
+        case .systemMedium:
+            PinsMediumWidgetView(entry: entry)
+        default:
+            PinsLargeWidgetView(entry: entry)
+        }
     }
 }
 
 struct RecentlyPlayedWidgetEntryView: View {
     var entry: RecentlyPlayedWidgetProvider.Entry
+    @Environment(\.widgetFamily) var family
     
     var body: some View {
-        RecentlyPlayedWidgetView(entry: entry)
+        switch family {
+        case .systemSmall:
+            RecentlyPlayedSmallWidgetView(entry: entry)
+        case .systemMedium:
+            RecentlyPlayedMediumWidgetView(entry: entry)
+        default:
+            RecentlyPlayedLargeWidgetView(entry: entry)
+        }
     }
 }
 
@@ -936,7 +1166,7 @@ struct PinsWidget: Widget {
         }
         .configurationDisplayName("Pins")
         .description("Quickly access your pinned items.")
-        .supportedFamilies([.systemLarge])
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
     }
 }
 
@@ -952,7 +1182,7 @@ struct RecentlyPlayedWidget: Widget {
         }
         .configurationDisplayName("Recently Played")
         .description("Find all your recently played music, and see what's currently playing.")
-        .supportedFamilies([.systemLarge])
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
     }
 }
 
